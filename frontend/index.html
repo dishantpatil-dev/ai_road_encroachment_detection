@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CivicScan — Intelligent Road Monitoring</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="ambient ambient-one"></div>
+<div class="ambient ambient-two"></div>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark"><span></span></span>
+    <div>
+      <div class="brand-name">AI-ROAD<span>ENCROACHMENT-DETECTION</span></div>
+      <div class="brand-subtitle">INTELLIGENT ROAD MONITORING</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="system-pill"><span id="apiStatusDot" class="dot dot-unknown"></span><span id="apiStatusText">checking pipeline…</span></div>
+    <div class="live-clock" id="liveClock">--:--:--</div>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="panel capture-panel">
+    <div class="section-heading">
+      <div>
+        <div class="eyebrow">CONTROL CENTER</div>
+        <h1>Road intelligence <span>in real time.</span></h1>
+        <p class="section-copy">Monitor road conditions, identify hazards and confirm issues with AI-assisted vision.</p>
+      </div>
+      <div class="status-badge"><i></i> SYSTEM READY</div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="live"><span class="tab-icon">◉</span> Live Camera</button>
+      <button class="tab" data-tab="upload"><span class="tab-icon">↥</span> Upload Video</button>
+    </div>
+
+    <div class="tab-panel" id="tab-live">
+      <div class="video-frame">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="canvas" class="hidden"></canvas>
+        <div class="video-placeholder">
+          <div class="camera-glyph">⌁</div>
+          <span>CAMERA FEED</span>
+          <small>Press start scanning to activate</small>
+        </div>
+        <div class="scan-grid"></div>
+        <div class="scan-overlay" id="scanOverlay"><div class="scan-beam"></div></div>
+        <div class="feed-label"><span class="pulse-dot"></span> LIVE FEED <b>4K VISION</b></div>
+        <div class="feed-corner top-left"></div><div class="feed-corner top-right"></div>
+        <div class="feed-corner bottom-left"></div><div class="feed-corner bottom-right"></div>
+      </div>
+
+      <div class="controls-row">
+        <button id="startBtn" class="btn btn-primary"><span class="btn-symbol">▶</span> Start scanning</button>
+        <button id="stopBtn" class="btn btn-ghost" disabled><span class="btn-symbol">■</span> Stop</button>
+        <label class="interval-label"><span>SCAN INTERVAL</span><input type="number" id="intervalInput" value="4" min="2" max="30" /><b>SEC</b></label>
+      </div>
+
+      <div class="location-row">
+        <span class="loc-dot" id="locDot"></span>
+        <span id="locText">Waiting for location…</span>
+        <span class="location-chip">GPS</span>
+      </div>
+    </div>
+
+    <div class="tab-panel hidden" id="tab-upload">
+      <div class="upload-drop" id="uploadDrop">
+        <input type="file" id="videoFile" accept="video/*" class="hidden" />
+        <div class="upload-icon">↥</div>
+        <p class="upload-title">Drop your road footage here</p>
+        <p class="upload-hint">or <span class="link-text" id="browseLink">browse files</span> from your device</p>
+        <p id="fileName" class="file-name"></p>
+      </div>
+      <div class="manual-loc">
+        <label>LATITUDE <input type="number" step="0.000001" id="manualLat" placeholder="28.6139" /></label>
+        <label>LONGITUDE <input type="number" step="0.000001" id="manualLon" placeholder="77.2090" /></label>
+        <button class="btn btn-ghost small" id="useMyLocBtn">◎ Use my location</button>
+      </div>
+      <div class="controls-row">
+        <label class="interval-label"><span>SAMPLE EVERY</span><input type="number" id="videoIntervalInput" value="2" min="1" max="10" /><b>SEC</b></label>
+        <button id="analyzeVideoBtn" class="btn btn-primary"><span class="btn-symbol">◆</span> Analyze video</button>
+      </div>
+      <div id="videoProgress" class="hint-text"></div>
+    </div>
+
+    <div class="metrics-strip">
+      <div class="metric"><span class="metric-icon orange">⌁</span><div><b id="metricDetections">0</b><small>DETECTIONS</small></div></div>
+      <div class="metric"><span class="metric-icon blue">⌖</span><div><b id="metricPins">0</b><small>CONFIRMED PINS</small></div></div>
+      <div class="metric"><span class="metric-icon green">✓</span><div><b>AI</b><small>VERIFICATION</small></div></div>
+    </div>
+
+    <div class="log-panel">
+      <div class="log-header"><span><i class="live-dot"></i> Detection activity</span><span class="log-counter" id="logCounter">0 EVENTS</span></div>
+      <div class="log-list" id="logList"><div class="log-empty">Detections will appear here once scanning starts.</div></div>
+    </div>
+  </section>
+
+  <section class="panel map-panel">
+    <div class="map-header">
+      <div><div class="eyebrow">GEOSPATIAL OVERVIEW</div><h2>Confirmed issues</h2></div>
+      <div class="map-stat"><span class="map-stat-dot"></span><strong id="pinCount">0 pinned</strong></div>
+    </div>
+    <div class="map-toolbar"><span>LIVE INCIDENT MAP</span><span class="map-coordinates">GLOBAL MONITORING GRID</span></div>
+    <div id="map"></div>
+    <div class="legend">
+      <span class="legend-item"><i class="swatch swatch-pothole"></i><span>Pothole</span></span>
+      <span class="legend-item"><i class="swatch swatch-garbage"></i><span>Garbage area</span></span>
+      <span class="legend-item"><i class="swatch swatch-encroachment"></i><span>Encroachment</span></span>
+    </div>
+  </section>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="app.js"></script>
+<script>
+(function(){
+  const clock = document.getElementById('liveClock');
+  function tick(){ clock.textContent = new Date().toLocaleTimeString([], {hour12:false}); }
+  tick(); setInterval(tick,1000);
+
+  const observer = new MutationObserver(() => {
+    const pinText = document.getElementById('pinCount')?.textContent || '0';
+    const pinNumber = (pinText.match(/\d+/) || ['0'])[0];
+    const metricPins = document.getElementById('metricPins');
+    if(metricPins) metricPins.textContent = pinNumber;
+  });
+  const pin = document.getElementById('pinCount');
+  if(pin) observer.observe(pin,{childList:true,subtree:true,characterData:true});
+
+  const originalLog = window.logEntry;
+  if(typeof originalLog === 'function'){
+    window.logEntry = function(r){
+      originalLog(r);
+      const count = document.querySelectorAll('.log-entry').length;
+      const counter = document.getElementById('logCounter');
+      const metric = document.getElementById('metricDetections');
+      if(counter) counter.textContent = count + ' EVENTS';
+      if(metric) metric.textContent = count;
+    };
+  }
+})();
+</script>
+</body>
+</html>
